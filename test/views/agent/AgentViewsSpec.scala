@@ -54,6 +54,29 @@ class AgentViewsSpec extends SpecBase {
     }
   }
 
+  "NoResultsFoundView" - {
+    val view = app.injector.instanceOf[NoResultsFoundView]
+
+    "renders the heading, playback of the search term, suggestions and search again link" in {
+      val doc = Jsoup.parse(view("Acme").body)
+
+      doc.select("h1").text must include(messages("noResultsFound.heading"))
+      doc.select(".govuk-caption-l").text mustBe messages("noResultsFound.caption")
+      doc.text              must include(messages("noResultsFound.p1", "Acme"))
+      doc.select("ul.govuk-list--bullet li").size mustBe 3
+      doc.select(".govuk-back-link").size mustBe 1
+      doc.select("a:contains(" + messages("noResultsFound.searchAgain") + ")").attr("href") mustBe
+        controllers.agent.routes.ClientListController.onPageLoad().url
+    }
+
+    "escapes the search term" in {
+      val doc = Jsoup.parse(view("<script>alert(1)</script>").body)
+
+      doc.select("main script").size mustBe 0
+      doc.text must include("<script>alert(1)</script>")
+    }
+  }
+
   "AgentLostAccessView" - {
     "renders the lost-access heading" in {
       val doc = Jsoup.parse(app.injector.instanceOf[AgentLostAccessView].apply().body)
@@ -91,13 +114,6 @@ class AgentViewsSpec extends SpecBase {
       doc.select("a").eachAttr("href").toArray must contain(
         controllers.agent.routes.AgentLandingController.onPageLoad("RN1").url
       )
-    }
-
-    "renders the no-results message when the list is empty" in {
-      val pagination = PaginationParams(0, 10, 1)
-      val doc        = Jsoup.parse(view(Seq.empty, "abc", pagination).body)
-
-      doc.text must include(messages("clientList.noResults"))
     }
 
     "renders pagination when more than 10 clients exist" in {
